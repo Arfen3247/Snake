@@ -3,7 +3,7 @@ A class to animate a solver through multiple games on a grid.
 Use key up and key down to adjust speed.
 Use Y / N to play again or quit.
 
-Built using pygame, upon run_single_test
+Built using pygame and run_single_test
 """
 import pygame
 from random import choice
@@ -99,11 +99,10 @@ class GridAnimator():
                 
                 # replace new_head by old_tail in empty vertices list
                 # unless they are the same (then neither are in that list)
-                if new_head == old_tail:
-                    continue
-                i = empty_indices[new_head]
-                empty_vertices[i] = old_tail
-                empty_indices[old_tail] = i
+                if new_head != old_tail:
+                    i = empty_indices[new_head]
+                    empty_vertices[i] = old_tail
+                    empty_indices[old_tail] = i
 
                 # animate
                 score += 1
@@ -277,8 +276,15 @@ class GridAnimator():
     def draw_path_and_loop(self, head, path):
         # draw planned loop, if exists
         if hasattr(self.solver, 'loop'):
+            # clear the loop layer
             pygame.draw.rect(self.loop_layer, (0, 0, 0, 0), self.full_rect) 
             self.screen.blit(self.loop_layer, (0, 0))
+            self.screen.blit(self.bg_layer, (0, 0))        
+
+            # prevent score from flashing (not an ideal fix but whatever)
+            self.screen.blit(self.score_layer, (0, 0))    
+
+            # draw new loop
             loop_points = [self.index_to_centre[c] for c in self.solver.loop]
             pygame.draw.lines(
                 self.loop_layer,
@@ -290,10 +296,7 @@ class GridAnimator():
             self.screen.blit(self.loop_layer, (0, 0))
 
         # draw path to apple
-        self.path_layer.fill((0,0,0,0)) 
-        points = [self.index_to_centre[head]] + [
-            self.index_to_centre[p] for p in path
-        ]
+        points = [self.index_to_centre[head]] + [self.index_to_centre[p] for p in path]
         pygame.draw.lines(
             self.path_layer,
             (255, 0, 0, 200),

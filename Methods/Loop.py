@@ -2,8 +2,6 @@
 A grid solver which follows the 'Loop' strategy.
 Sticks to a Hamiltonian Cycle, unless the grid has odd area A, 
 then it follows a spanning Theta(A-3, 2, 2) subgraph.
-
-Loop odd is very very broken...
 """
 from collections import deque
 from GridSpecificTools.CycleAndTheta import find_HC, find_theta

@@ -3,7 +3,7 @@ from collections import deque
 import time
 import statistics
 import matplotlib.pyplot as plt
-from GridSpecificTools.GridGraphAndSymmetries import find_grid_adjacency, find_geometric_lower_bound
+from GridSpecificTools.GridGraphAndSymmetries import find_grid_adjacency
 import numpy as np
 from ExactValues.Loop import find_Loop_PDF
         
@@ -154,7 +154,6 @@ def compare_methods_on_grid(m, n, N, solvers, against_exact_Loop_PDF):
         ax2.plot(apple_axis, Loop_score_per_apple, 
                 color='black', linestyle='-', linewidth=2, label='Loop Expectation')
     
-
     scotts_constant = 3.5 * N**(-1/3)   # best bin width according to Scott's rule
     for solver in solvers:
         scores, avg_score_per_apple = run_multiple_games(adjacency, solver, N)
