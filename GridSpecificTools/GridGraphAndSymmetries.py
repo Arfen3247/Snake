@@ -97,16 +97,9 @@ def find_fixed_lists(transformed_lists):
         for lst in transformed_lists
     ]
 
-from fractions import Fraction
-def find_geometric_lower_bound(m, n):
-    # for each coordinate, find distance to the centre
-    cm, cn = m//2, n//2
-    m_distances = [abs(i-cm) for i in range(m)]
-    n_distances = [abs(j-cn) for j in range(n)]
-    distances = sorted([di+dj for di in m_distances for dj in n_distances])
-    total = sum(distances)
-    score_per_apple = []
-    for empty_space in range(m*n-1, 0, -1):
-        score_per_apple.append(Fraction(total, empty_space))
-        total -= distances.pop()
-    return score_per_apple
+def find_Manhattan_distance_func(n):
+    def ManhattanDistance(x, y):
+        rx, cx = divmod(x, n)
+        ry, cy = divmod(y, n)
+        return abs(rx - ry) + abs(cx - cy)
+    return ManhattanDistance
