@@ -17,15 +17,19 @@ APPLE_COLOR = (255, 0, 0)
 LINE_COLOR  = (255, 255, 255)
 
 FPS_DEFAULT = 1
-CELL = 100
+BOARD_SIZE = 600  
 SEG_MARGIN = 4
 SCORE_HEIGHT = 40
 RECT_EXPAND = 1
 
-RADIUS = CELL//2 - SEG_MARGIN
 
 class GridAnimator():
     def __init__(self, m, n, solver):
+        CELL = BOARD_SIZE // n
+        RADIUS = CELL//2 - SEG_MARGIN
+        self.CELL = CELL
+        self.RADIUS = RADIUS    
+
         self.adjacency = find_grid_adjacency(m, n)
 
         self.index_to_rect  = [(j*CELL, i*CELL + SCORE_HEIGHT)
@@ -36,6 +40,7 @@ class GridAnimator():
         self.solver = solver
         self.area = m * n
         self.fps = FPS_DEFAULT
+        
         self.height = n*CELL
         self.create_board_layers(n*CELL, m*CELL + SCORE_HEIGHT)
 
@@ -190,7 +195,7 @@ class GridAnimator():
         pygame.draw.rect(self.score_layer, (0, 0, 0, 0), self.full_rect)
 
         # put snake head at start location
-        pygame.draw.circle(self.snake_layer, HEAD_COLOR, self.index_to_centre[start], RADIUS)
+        pygame.draw.circle(self.snake_layer, HEAD_COLOR, self.index_to_centre[start], self.RADIUS)
         # show empty score
         self.update_score(1, 0)
         self.screen.blit(self.bg_layer, (0, 0))
@@ -205,13 +210,13 @@ class GridAnimator():
         scoreboard = self.font.render(f"FPS: {self.fps}   L: {length}   S: {score}", True, (255, 255, 255))
         self.score_layer.fill(BG_COLOR, pygame.Rect(0, 0, self.height, SCORE_HEIGHT))
         self.score_layer.blit(scoreboard, (5, 5))
-        pygame.draw.line(self.score_layer, LINE_COLOR, (0, SCORE_HEIGHT-1), (n*CELL, SCORE_HEIGHT-1), 2)
+        pygame.draw.line(self.score_layer, LINE_COLOR, (0, SCORE_HEIGHT-1), (self.height, SCORE_HEIGHT-1), 2)
         self.screen.blit(self.score_layer, (0, 0))
         pygame.display.update()
 
     def draw_apple(self, apple):
         centre = self.index_to_centre[apple]
-        pygame.draw.circle(self.snake_layer, APPLE_COLOR, centre, RADIUS)
+        pygame.draw.circle(self.snake_layer, APPLE_COLOR, centre, self.RADIUS)
         self.screen.blit(self.snake_layer, (0, 0))
         pygame.display.update()
         
@@ -222,10 +227,10 @@ class GridAnimator():
         oh_centre = self.index_to_centre[old_head]
         nh_centre = self.index_to_centre[new_head]
         # draw old_head as body
-        pygame.draw.circle(self.snake_layer, BODY_COLOR, oh_centre, RADIUS)   
+        pygame.draw.circle(self.snake_layer, BODY_COLOR, oh_centre, self.RADIUS)   
         # delete path under old head
         x, y = self.index_to_rect[old_head]
-        rect = pygame.Rect(x, y, CELL, CELL)
+        rect = pygame.Rect(x, y, self.CELL, self.CELL)
         pygame.draw.rect(
             self.path_layer,
             (0, 0, 0, 0),
@@ -237,12 +242,12 @@ class GridAnimator():
         if old_tail == old_head:
             self.clear_tail(old_tail)
 
-        pygame.draw.circle(self.snake_layer, HEAD_COLOR, nh_centre, RADIUS)
+        pygame.draw.circle(self.snake_layer, HEAD_COLOR, nh_centre, self.RADIUS)
         self.screen.blit(self.snake_layer, (0, 0))
         
     def clear_tail(self, tail):
         x, y = self.index_to_rect[tail]
-        rect = pygame.Rect(x, y, CELL, CELL)
+        rect = pygame.Rect(x, y, self.CELL, self.CELL)
         pygame.draw.rect(
             self.snake_layer,
             (0, 0, 0, 0),
@@ -258,15 +263,15 @@ class GridAnimator():
         cx1, cy1 = c1
         cx2, cy2 = c2
         if cx1 == cx2:
-            x = cx1 - RADIUS
+            x = cx1 - self.RADIUS
             y = min(cy1, cy2)
-            width = 2 * RADIUS
+            width = 2 * self.RADIUS
             height = abs(cy1 - cy2)
         else:
             x = min(cx1, cx2)
-            y = cy1 - RADIUS
+            y = cy1 - self.RADIUS
             width = abs(cx1 - cx2)
-            height = 2 * RADIUS
+            height = 2 * self.RADIUS
         x = int(x) - RECT_EXPAND
         y = int(y) - RECT_EXPAND
         width = int(width) + 2*RECT_EXPAND
@@ -307,7 +312,7 @@ class GridAnimator():
         self.screen.blit(self.path_layer, (0, 0))
 
         # redraw head on top
-        pygame.draw.circle(self.snake_layer, HEAD_COLOR, self.index_to_centre[head], RADIUS)
+        pygame.draw.circle(self.snake_layer, HEAD_COLOR, self.index_to_centre[head], self.RADIUS)
         self.screen.blit(self.snake_layer, (0, 0))  
 
     def events(self):

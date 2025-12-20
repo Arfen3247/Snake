@@ -105,7 +105,7 @@ def run_multiple_games(adjacency, solver, N):
     return scores, avg_score_per_apple
 
 
-def compare_methods_on_grid(m, n, N, solvers, against_exact_Loop_PDF):
+def compare_methods_on_grid(m, n, N, solvers, against_exact_Loop_PDF = False):
 
     adjacency = find_grid_adjacency(m, n)
     area = m * n
