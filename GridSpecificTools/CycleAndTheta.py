@@ -4,17 +4,17 @@ m is the short vertical edge length, first coord
 n is the long horizontal edge length, second coord
 """
 
-def find_HC(m, n):
-    return [i*n+j for i, j in find_HC_coord(m, n)]
+def find_HC_haircomb(m, n):
+    return [i*n+j for i, j in find_HC_haircomb_in_coords(m, n)]
 
-def find_theta(m, n):
-    path, (hi, hj), (ahi, ahj), anti_hole_idx = find_theta_coord(m, n)
+def find_theta_haircomb(m, n):
+    path, (hi, hj), (ahi, ahj), anti_hole_idx = find_theta_haircomb_in_coords(m, n)
     path = [i*n+j for i,j in path]
     hole = hi * n + hj
     antihole = ahi * n + ahj
     return  path, hole, antihole, anti_hole_idx
 
-def find_HC_coord(m, n):
+def find_HC_haircomb_in_coords(m, n):
     if m%2 == 0:    
         i_range = list(range(m))
         path = [(i,0) for i in i_range]
@@ -33,7 +33,7 @@ def find_HC_coord(m, n):
         return path
 
 
-def find_theta_coord(m, n):
+def find_theta_haircomb_in_coords(m, n):
     # vertical drop from (1,0)
     path = [(i,0) for i in range(1, m)]
 

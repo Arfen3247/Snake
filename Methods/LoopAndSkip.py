@@ -1,11 +1,11 @@
 from GridSpecificTools.GridGraphAndSymmetries import find_grid_adjacency, find_Manhattan_distance_func
-from GridSpecificTools.CycleAndTheta import find_HC, find_theta
+from GridSpecificTools.CycleAndTheta import find_HC_haircomb, find_theta_haircomb
 from collections import deque
 from itertools import islice
 
 
 class GridSolver_LoopAndSkip():
-    def __init__(self, m, n, cutoff_length=None):
+    def __init__(self, m, n, find_HC=find_HC_haircomb, find_theta=find_theta_haircomb, cutoff_length=None):
         if m%2==0 or n%2==0:
             self.name = 'Loop&Skip Even'
             self.start_new_game = self.start_new_game_even
@@ -135,14 +135,3 @@ class GridSolver_LoopAndSkip():
             path.append(self.loop[idx])
 
         return path
-    
-
-if __name__ == "__main__":
-    # takes about 30 seconds
-    m = 16
-    n = 16
-    N = 1_000
-    from CompareMethods import compare_methods_on_grid
-    solver = GridSolver_LoopAndSkip(m, n)
-    compare_methods_on_grid(m, n, N, [solver])
-    

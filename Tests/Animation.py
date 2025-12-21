@@ -325,13 +325,3 @@ class GridAnimator():
                     self.fps += 1
                 elif event.key == pygame.K_DOWN:
                     self.fps = max(1, self.fps-1)
-
-
-if __name__ == "__main__":
-    m = 4
-    n = 4
-    from Methods.Loop import GridSolverLoop
-    solver = GridSolverLoop(m, n)
-    animator = GridAnimator(m, n, solver)
-    scores = animator.animate_many_games()
-    print(scores)

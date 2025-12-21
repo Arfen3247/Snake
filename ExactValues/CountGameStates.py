@@ -5,12 +5,10 @@ from GridSpecificTools.GridGraphAndSymmetries import (find_grid_adjacency, find_
                                     find_preferred_lists, find_transformed_lists)
 
 
-# TO DO: for any graph, count states from its adjacency list
-
 def count_grid_board_states(m, n):
 
     A = m*n         # area
-    counts = [0] * (A+1)
+    snakes_per_length = [0] * (A+1)
 
     TSMS   = 0      # total snakes, mod symmetries
     TSWAMS = 0      # total snakes with apples mod symmetries
@@ -175,7 +173,7 @@ def count_grid_board_states(m, n):
                         TS     += SYMM
                         TSWA   += SYMM * apple_spaces
                         no_symm_stack.append(new_head)
-                        counts[length] += 1
+                        snakes_per_length[length] += 1
 
         else:
             # non-symmetry branch
@@ -202,17 +200,16 @@ def count_grid_board_states(m, n):
                     TS     += SYMM
                     TSWA   += SYMM * apple_spaces
                     no_symm_stack.append(new_head)
-                    counts[length] += 1
+                    snakes_per_length[length] += 1
 
-    print(counts)
-    return TSMS, TSWAMS, TS, TSWA
+    return snakes_per_length, TSMS, TSWAMS, TS, TSWA
 
 # due to the exponential time complexity, 
 # here is a version that only works modulo symmetry
 
 def count_grid_board_states_mod_symmetry(m, n):
     A = m*n         # area
-    counts = [0] * (A+1)
+    snakes_by_length = [0] * (A+1)
 
     TSMS   = 0      # total snakes, mod symmetries
     TSWAMS = 0      # total snakes with apples mod symmetries
@@ -348,7 +345,7 @@ def count_grid_board_states_mod_symmetry(m, n):
                         TSMS   += 1
                         TSWAMS += apple_spaces
                         no_symm_stack.append(new_head)
-                        counts[length] += 1
+                        snakes_by_length[length] += 1
 
         else:
             # non-symmetry branch
@@ -373,16 +370,6 @@ def count_grid_board_states_mod_symmetry(m, n):
                     TSMS   += 1
                     TSWAMS += apple_spaces
                     no_symm_stack.append(new_head)
-                    counts[length] += 1
+                    snakes_by_length[length] += 1
 
-    print(counts)
-    return TSMS, TSWAMS
-
-
-if __name__ == "__main__":
-    import time
-    m = 5
-    n = 5
-    start = time.time()
-    print(count_grid_board_states_mod_symmetry(m, n))
-    print(time.time()-start)
+    return snakes_by_length, TSMS, TSWAMS

@@ -4,20 +4,19 @@ Sticks to a Hamiltonian Cycle, unless the grid has odd area A,
 then it follows a spanning Theta(A-3, 2, 2) subgraph.
 """
 from collections import deque
-from GridSpecificTools.CycleAndTheta import find_HC, find_theta
+from GridSpecificTools.CycleAndTheta import find_HC_haircomb, find_theta_haircomb
 from itertools import islice
 
 
-class GridSolverLoop():
-    def __init__(self, m, n):
+class GridSolver_Loop():
+    def __init__(self, m, n, find_HC = find_HC_haircomb, find_theta = find_theta_haircomb):
+        self.name = 'Loop'
         if m%2==0 or n%2==0:
-            self.name = 'Loop Even'
             self.start_new_game = self.start_new_game_even
             self.find_path = self.find_path_even
             self.loop = deque(find_HC(m, n))
             
         else:
-            self.name = 'Loop Odd'
             self.start_new_game = self.start_new_game_odd
             self.find_path = self.find_path_odd
             
