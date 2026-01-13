@@ -1,7 +1,7 @@
 """
 Functions to count the board states of an mxn grid.
 """
-from GridSpecificTools.GridGraphAndSymmetries import (find_grid_adjacency, find_fixed_lists,
+from GridsAndGraphs.Adjacencies import (find_grid_adjacency, find_fixed_lists,
                                     find_preferred_lists, find_transformed_lists)
 
 

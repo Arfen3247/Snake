@@ -1,6 +1,7 @@
 import time
 import heapq
 from fractions import Fraction
+from GridsAndGraphs.Adjacencies import find_reverse_adjacency
 
 
 class SnakeNode():
@@ -103,10 +104,11 @@ class SafeWinningSnakeTree(SnakeTree):
     and include all Hamiltonian Cycles.
     """
 
-    def __init__(self, adjacency):
+    def __init__(self, forward_adjacency):
         super().__init__()
-        self.adjacency = adjacency      # a list of the neighbours of each vertex of the graph
-        self.area = len(adjacency)      # the number of vertices in the graph
+        self.forward_adjacency = forward_adjacency      # a list of the neighbours of each vertex of the graph
+        self.backward_adjacency = find_reverse_adjacency(forward_adjacency)
+        self.area = len(forward_adjacency)      # the number of vertices in the graph
     
     def grow_safe_winning_snakes(self, printing=False):
         # we use a depth-first search
@@ -114,26 +116,53 @@ class SafeWinningSnakeTree(SnakeTree):
         # exiting early if no safe winning snake is possible
         if printing:
             print(f"Growing tree...")
-
-        self.length = 1
-        self.possible_edges = [list(x) for x in self.adjacency]
-        self.degrees        = [len(x)  for x in self.adjacency]
-        self.occupied       = [False] * self.area
-        self.full_snakes_list = []
         
+        self.possible_forward_edges  = [list(x) for x in self.forward_adjacency]
+        self.possible_backward_edges = [list(x) for x in self.backward_adjacency]      
+        self.forward_degrees  = [len(x) for x in self.forward_adjacency]
+        self.backward_degrees = [len(x) for x in self.backward_adjacency]
+        self.occupied         = [False] * self.area
+        self.full_snakes_list = []
+
         for first_head in range(self.area):
-            self.first_head = first_head
-            self.current_node = self.root.add_child(first_head)
-            self.occupied[first_head] = True
-            for second_head in self.adjacency[first_head]:
+            self.occupy_first_head(first_head)
+            for second_head in self.forward_adjacency[first_head]:
                 self.second_head = second_head
                 self.current_node.add_child(second_head)
                 self.search_branch([second_head])
-            self.occupied[first_head] = False
+            self.unoccupy_first_head()
         self.count_and_classify_states()
         if printing:
             self.message_end_of_growth()
 
+    def occupy_first_head(self, first_head):
+
+
+        self.first_head = first_head
+        self.current_node = self.root.add_child(first_head)
+        self.occupied[first_head] = True
+        self.length = 1
+        for x in self.backward_adjacency[first_head]:
+            self.possible_forward_edges[x].remove(first_head)
+            self.forward_degrees[x] -= 1
+        self.possible_backward_edges[first_head] = []
+        self.backward_degrees[first_head] = 0
+
+
+    def unoccupy_first_head(self):
+        first_head = self.first_head
+
+
+        self.occupied[first_head] = False
+        self.length = 0
+        for x in self.backward_adjacency[first_head]:
+            self.possible_forward_edges[x].append(first_head)
+            self.forward_degrees[x] += 1
+        self.possible_backward_edges[first_head] = list(self.backward_adjacency[first_head])
+        self.backward_degrees[first_head] = len(self.backward_adjacency[first_head])
+
+
+    
     def search_branch(self, stack):
         while stack:
             current_head = stack.pop()
@@ -142,7 +171,7 @@ class SafeWinningSnakeTree(SnakeTree):
                 continue
             self.occupy(current_head)
             stack.append(current_head)
-            
+
             if self.length == self.area:
                 self.full_snakes_list.append(self.current_node)
                 continue
@@ -150,36 +179,34 @@ class SafeWinningSnakeTree(SnakeTree):
             if self.safe_winning_snake_is_impossible(current_head):
                 continue
 
-            for new_head in self.possible_edges[current_head]:   
+            for new_head in self.possible_forward_edges[current_head]:   
                 self.current_node.add_child(new_head)       
                 stack.append(new_head)
 
-    def occupy(self, current_head):
-        possible_edges = self.possible_edges
-        degrees = self.degrees       
 
-        # to occupy a vertex, 
+    def occupy(self, current_head):
+
         self.length += 1
         prev_head = self.current_node.value
         self.current_node = self.current_node.children[current_head]
         self.occupied[current_head] = True
-        # is to make a definite connection between the current and previous heads,
-        degrees[current_head] += 1
-        degrees[prev_head]    += 1
-        # and to cut possible ties between the previous head and other vertices
-        lst = possible_edges[prev_head]
-        while lst:
-            neighbour = lst.pop()
-            possible_edges[neighbour].remove(prev_head)
-            degrees[neighbour] -= 1
-            degrees[prev_head] -= 1
+
+        # remove edges prev_head -> x
+        for x in self.possible_forward_edges[prev_head]:
+            self.possible_backward_edges[x].remove(prev_head)
+            self.backward_degrees[x] -= 1
+        self.possible_forward_edges[prev_head] = []
+        self.forward_degrees[prev_head] = 0
+
+        # remove edges x -> current_head
+        for x in self.possible_backward_edges[current_head]:
+            self.possible_forward_edges[x].remove(current_head)
+            self.forward_degrees[x] -= 1
+        self.possible_backward_edges[current_head] = []
+        self.backward_degrees[current_head] = 0
+
 
     def unoccupy(self):
-        occupied = self.occupied
-        possible_edges = self.possible_edges
-        degrees = self.degrees
-
-        # to unoccupy a vertex,
         current_head = self.current_node.value
 
         if self.length != self.area and not self.current_node.children:
@@ -192,71 +219,75 @@ class SafeWinningSnakeTree(SnakeTree):
             self.current_node = self.current_node.parent
 
         prev_head = self.current_node.value
-        occupied[current_head] = False
+        self.occupied[current_head] = False
         self.length -= 1
 
-        # is to remove the definite connection between the current and previous heads
-        degrees[prev_head]    -= 1
-        degrees[current_head] -= 1
-        # and to restore possible ties between the previous head and other vertices
-        for neighbour in self.adjacency[prev_head]:
-            if occupied[neighbour]:
+        # reinstate edges prev_head -> x
+        for neighbour in self.forward_adjacency[prev_head]:
+            if self.occupied[neighbour]:
                 continue
-            possible_edges[neighbour].append(prev_head)
-            possible_edges[prev_head].append(neighbour)
-            degrees[prev_head] += 1
-            degrees[neighbour] += 1
+            self.possible_forward_edges[prev_head].append(neighbour)
+            self.possible_backward_edges[neighbour].append(prev_head)
+            self.forward_degrees[prev_head] += 1
+            self.backward_degrees[neighbour] += 1
+
+        # reinstate edges x -> current_head
+        for neighbour in self.backward_adjacency[current_head]:
+            if self.occupied[neighbour]:
+                continue
+            self.possible_backward_edges[current_head].append(neighbour)
+            self.possible_forward_edges[neighbour].append(current_head)
+            self.backward_degrees[current_head] += 1
+            self.forward_degrees[neighbour] += 1
+
 
     def safe_winning_snake_is_impossible(self, current_head):
-        # check that current_head has somewhere to go
-        if not self.possible_edges[current_head]:
+        if not self.empty_space_can_be_filled(current_head):
             return True
-        
-        if self.impossible_by_degrees():
-            return True
-        
-        if self.empty_space_is_disconnected(current_head):
-            return True
-
-        if self.unsafe_with_2_apples():
-            return True
-        
+        #if self.impossible_by_degrees():
+            #return True
+        #if self.unsafe_with_2_apples():
+            #return True
+        return False
+    
+    def empty_space_can_be_filled(self, current_head):
+        num_empty_spaces = self.area-self.length        
+        for x in self.possible_forward_edges[current_head]:        
+            # check if every unoccupied cell can be reached from x
+            stack = [x]
+            seen = set([x, current_head]) 
+            while stack:
+                y = stack.pop()
+                for z in self.possible_forward_edges[y]:
+                    if z in seen:
+                        continue
+                    stack.append(z)
+                    seen.add(z)
+            if len(seen)-1 == num_empty_spaces:
+                return True 
         return False
     
     def impossible_by_degrees(self):
-        # no HP is possible if there is a vertex of degree 0, or more than 2 of degree 1.
-        count_1 = 0
         self.end_point = None
-        for v, d in enumerate(self.degrees):
-            if d == 0:
-                return True
-            if d == 1:
-                count_1 += 1
-                if count_1 == 3:
-                    return True
-                if v != self.first_head:
-                    # any HP must end here!
-                    self.end_point = v
-        return False
-    
-    def empty_space_is_disconnected(self, current_head):
-        # no HP is possible in that case
+        occupied = self.occupied
 
-        # find some unoccupied cell x
-        # we know that the current_head is next to one
-        x = self.possible_edges[current_head][0]
-        
-        # ensure that every unoccupied cell can be reached from x
-        stack = [x]
-        seen = set([x, current_head])
-        while stack:
-            y = stack.pop()
-            for z in self.possible_edges[y]:
-                if z in seen:
-                    continue
-                stack.append(z)
-                seen.add(z)
-        return len(seen)-1 != self.area-self.length
+        for v in range(self.area):
+            # ignore the parts of the snake!
+            if occupied[v]:
+                continue
+
+            if self.backward_degrees[v] == 0:
+                # unreachable
+                return True
+
+            if self.forward_degrees[v] == 0:
+                # must be the endpoint
+                if self.end_point != None:
+                    # can't have two endpoints!
+                    return True
+                self.end_point = v
+
+        return False
     
     def unsafe_with_2_apples(self):
 
@@ -269,34 +300,31 @@ class SafeWinningSnakeTree(SnakeTree):
         if z is None:
             return False
         # z is a vertex with degree one, we must end there
+
         
-        y, = self.possible_edges[z]
-        if self.occupied[y]:
-            # win in one
-            # y - z
-            return False
-        
-        adjacent_to_first = self.adjacency[self.first_head]
-        if z in adjacent_to_first:
+        y = self.possible_backward_edges[z][0]
+
+        can_reach_first = self.backward_adjacency[self.first_head]
+        if z in can_reach_first:
             # hamiltonian cycle
             # x - y - z - a - b
             return False
         
-        adjacent_to_second = self.adjacency[self.second_head]
-        if z in adjacent_to_second:
+        can_reach_second = self.backward_adjacency[self.second_head]
+        if z in can_reach_second:
             # x - y - z - b - a
             return False
         
-        for x in self.possible_edges[y]:
+        for x in self.possible_backward_edges[y]:
             if x == z:
                 continue
 
-            if x in adjacent_to_first:
+            if x in can_reach_first:
                 # cycle and kamikaze
                 # x - a - b - ... - ? - z - y
                 return False
         
-        if y in adjacent_to_first or y in adjacent_to_second:
+        if y in can_reach_first or y in can_reach_second:
             # unclear, depends on circumstance and board
             return False
         
@@ -345,13 +373,13 @@ class SafeWinningSnakeTree(SnakeTree):
         Hamiltonian Cycle or spanning Theta(A-3, 2, 2) subgraph."""
         self.num_full_snake += 1
         z = node.value
-        first_adj = self.adjacency[self.first_head]
-        if z in first_adj:
+        can_reach_first = self.backward_adjacency[self.first_head]
+        if z in can_reach_first:
             self.num_hc += 1
             return
         y = node.parent.value 
-        second_adj = self.adjacency[self.second_head]
-        if y in first_adj and z in second_adj:
+        can_reach_second = self.backward_adjacency[self.second_head]
+        if y in can_reach_first and z in can_reach_second:
             self.num_theta += 1
 
     def message_end_of_growth(self):
@@ -460,7 +488,7 @@ class OptimalSnakeTree(SafeWinningSnakeTree):
                 node.tail = old_tail
                 body_set = set(snake_wo_head)
                 
-                for new_tail in self.adjacency[old_tail]:
+                for new_tail in self.backward_adjacency[old_tail]:
                     # ensure move is valid
                     if new_tail in body_set:
                         continue
@@ -486,7 +514,7 @@ class OptimalSnakeTree(SafeWinningSnakeTree):
                 # find past snakes that reach this snake in a single move
                 old_head = node.value
                 old_tail = node.parent.value
-                for new_tail in self.adjacency[old_tail]:
+                for new_tail in self.backward_adjacency[old_tail]:
                     new_snake = (new_tail, old_tail)
                     new_node = self.add_snake(new_snake)
                     node.past_snakes.append(new_node)
@@ -506,7 +534,7 @@ class OptimalSnakeTree(SafeWinningSnakeTree):
                 node = temp_stack.pop()
 
                 # find past snakes that reach this snake in a single move     
-                for new_tail in self.adjacency[node.value]:
+                for new_tail in self.backward_adjacency[node.value]:
                     new_snake = (new_tail,)
                     new_node = self.add_snake(new_snake)
                     node.past_snakes.append(new_node)
@@ -628,4 +656,3 @@ class OptimalSnakeTree(SafeWinningSnakeTree):
         print(f'Reached nodes:  {count_nodes}')
         print(f'Reached states: {count_states}')
         print(f'Reached wins:   {count_wins}')
-

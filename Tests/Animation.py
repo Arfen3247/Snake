@@ -7,8 +7,9 @@ Built using pygame and run_single_test
 """
 import pygame
 from random import choice
-from collections import deque
-from GridSpecificTools.GridGraphAndSymmetries import find_grid_adjacency
+from random import seed as rand_set_seed
+from GridsAndGraphs.Adjacencies import find_grid_adjacency
+
 
 BG_COLOR    = (0, 0, 0)
 BODY_COLOR  = (0, 200, 0)
@@ -16,15 +17,13 @@ HEAD_COLOR  = (0, 100, 0)
 APPLE_COLOR = (255, 0, 0)
 LINE_COLOR  = (255, 255, 255)
 
-FPS_DEFAULT = 1
-BOARD_SIZE = 600  
+BOARD_SIZE = 600
 SEG_MARGIN = 4
-SCORE_HEIGHT = 40
+BANNER_HEIGHT = 40
 RECT_EXPAND = 1
 
-
 class GridAnimator():
-    def __init__(self, m, n, solver):
+    def __init__(self, m, n, solver, FPS=10):
         CELL = BOARD_SIZE // n
         RADIUS = CELL//2 - SEG_MARGIN
         self.CELL = CELL
@@ -32,116 +31,90 @@ class GridAnimator():
 
         self.adjacency = find_grid_adjacency(m, n)
 
-        self.index_to_rect  = [(j*CELL, i*CELL + SCORE_HEIGHT)
+        self.index_to_rect  = [(j*CELL, i*CELL + BANNER_HEIGHT)
                                 for i in range(m) for j in range(n)]
 
-        self.index_to_centre = [(j*CELL + CELL//2, i*CELL + CELL//2 + SCORE_HEIGHT)
+        self.index_to_centre = [(j*CELL + CELL//2, i*CELL + CELL//2 + BANNER_HEIGHT)
                                 for i in range(m) for j in range(n)] 
         self.solver = solver
         self.area = m * n
-        self.fps = FPS_DEFAULT
+        self.fps = FPS
         
         self.height = n*CELL
-        self.create_board_layers(n*CELL, m*CELL + SCORE_HEIGHT)
+        self.create_board_layers(n*CELL, m*CELL + BANNER_HEIGHT)
+        self.paused = False
+        self.show_path = True
+        self.show_FF_path = False
+        self.show_loop = True
 
-    def animate_single_game(self):  
+    def fetch_path_from_solver(self, head, apple):
+        self.draw_loop()
+        if self.show_path:
+            path = []
+            for x in self.solver.find_path(apple):
+                path.append(x)
+                if x == apple:
+                    break
+            if self.show_FF_path:
+                # not implemented yet!
+                pass
+            else:
+                self.draw_path(head, path)
+        else:
+            path = self.solver.find_path(apple)
+        return path
 
-        # keep track of occupied, empty vertices
-        occupied = [False] * self.area
-        empty_vertices = list(range(self.area))  # list of empty vertices
-        empty_indices = list(range(self.area))   # index of empty vertex within that list
-
-        # choose starting location, pass to solver
-        start = choice(empty_vertices)
-        self.solver.start_new_game(start)
-        
+    def animate_single_game(self, seed=None):  
+        if seed != None:
+            rand_set_seed(seed) 
+        area = self.area
+        solver = self.solver
+        adjacency = self.adjacency
+        vertices = list(range(area))
+        occupied = [False] * area
+        next_tail = [None] * area
+        start = choice(vertices)
         occupied[start] = True
-        snake = deque([start])
         head = start
-
-        # update empty space
-        i = empty_indices[start]
-        temp = empty_vertices[-1]
-        empty_vertices[i] = temp
-        empty_indices[temp] = i
-        empty_vertices.pop()
-
-        # animation
+        tail = start
+        apple = start
+        length = 1
+        move_counter = 0
+        solver.start_new_game(start)
         self.start_new_game(start)
         self.refresh_screen()
-        
-        score = 0
-        for length in range(1, self.area):
-            # generate random apple
-            apple = choice(empty_vertices)
+        for apple_num in range(area-1):
+            while occupied[apple]:
+                apple = choice(vertices)
             self.draw_apple(apple)
             self.refresh_screen()
-
-            # ask solver for path to apple
-            path = self.solver.find_path(apple)
-            self.draw_path_and_loop(head, path)
-            self.refresh_screen()
-            
-            for new_head in path[:-1]:
-                # move tail, check legality, move head
-                old_tail = snake.popleft()
-                occupied[old_tail] = False
-
-                if new_head not in self.adjacency[head]:
+            for new_head in self.fetch_path_from_solver(head, apple):
+                move_counter += 1
+                if new_head not in adjacency[head]:
                     print('ERROR: non-adjacent move!')
                     return None
+                if new_head == apple:
+                    break
+                occupied[tail] = False
                 if occupied[new_head]:
                     print('ERROR: collision with body!')
                     return None
-                if new_head == apple:
-                    print('ERROR: collision with apple!')
-                    return None
-                
                 occupied[new_head] = True
-                snake.append(new_head)
-                self.update_snake(head, new_head, old_tail)
-                head = new_head
-                
-                # replace new_head by old_tail in empty vertices list
-                # unless they are the same (then neither are in that list)
-                if new_head != old_tail:
-                    i = empty_indices[new_head]
-                    empty_vertices[i] = old_tail
-                    empty_indices[old_tail] = i
-
-                # animate
-                score += 1
-                self.update_score(length, score)
+                next_tail[head] = new_head
+                self.update_snake(head, new_head, tail)
+                self.update_banner(length, move_counter)
                 self.refresh_screen()
-
-
-            # check and execute final move
-            if path[-1] != apple:
-                print('ERROR: missed apple!')
-                return None
-            if apple not in self.adjacency[head]:
-                print('ERROR: non-adjacent move!')
-                return None
-
+                head = new_head
+                tail = next_tail[tail]
             occupied[apple] = True
-            snake.append(apple) 
+            next_tail[head] = apple
             self.update_snake(head, apple)
             head = apple
-
-            # remove apple from list of empty vertices
-            i = empty_indices[apple]
-            temp = empty_vertices[-1]
-            empty_vertices[i] = temp
-            empty_indices[temp] = i
-            empty_vertices.pop()
-
-            # animate
             length += 1
-            score += 1
-            self.update_score(length, score)
+            self.update_banner(length, move_counter)
             self.refresh_screen()
-        return score
-     
+        return move_counter
+
     def animate_many_games(self):
         # also return scores for user
         scores = []
@@ -175,16 +148,18 @@ class GridAnimator():
         self.loop_layer  = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.path_layer  = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.snake_layer = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        self.score_layer = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        self.banner_layer = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         # background design
         self.bg_layer.fill(BG_COLOR)
-        # design scoreboard
+        # design banner
         self.font = pygame.font.SysFont(None, 28)
 
     def refresh_screen(self):
         pygame.display.update()
-        self.events()
         self.clock.tick(self.fps)
+        self.events()
+        while self.paused:
+            self.events()    
 
     def start_new_game(self, start):
         # clear all board layers with transparent rectangles
@@ -192,26 +167,25 @@ class GridAnimator():
         pygame.draw.rect(self.loop_layer, (0, 0, 0, 0), self.full_rect)
         pygame.draw.rect(self.path_layer, (0, 0, 0, 0), self.full_rect)
         pygame.draw.rect(self.snake_layer, (0, 0, 0, 0), self.full_rect)
-        pygame.draw.rect(self.score_layer, (0, 0, 0, 0), self.full_rect)
+        pygame.draw.rect(self.banner_layer, (0, 0, 0, 0), self.full_rect)
 
         # put snake head at start location
         pygame.draw.circle(self.snake_layer, HEAD_COLOR, self.index_to_centre[start], self.RADIUS)
-        # show empty score
-        self.update_score(1, 0)
+        self.update_banner(1, 0)
         self.screen.blit(self.bg_layer, (0, 0))
         self.screen.blit(self.loop_layer, (0, 0))
         self.screen.blit(self.path_layer, (0, 0))
         self.screen.blit(self.snake_layer, (0, 0))
-        self.screen.blit(self.score_layer, (0, 0))
+        self.screen.blit(self.banner_layer, (0, 0))
 
         self.refresh_screen()
         
-    def update_score(self, length, score):
-        scoreboard = self.font.render(f"FPS: {self.fps}   L: {length}   S: {score}", True, (255, 255, 255))
-        self.score_layer.fill(BG_COLOR, pygame.Rect(0, 0, self.height, SCORE_HEIGHT))
-        self.score_layer.blit(scoreboard, (5, 5))
-        pygame.draw.line(self.score_layer, LINE_COLOR, (0, SCORE_HEIGHT-1), (self.height, SCORE_HEIGHT-1), 2)
-        self.screen.blit(self.score_layer, (0, 0))
+    def update_banner(self, length, move_counter):
+        banner = self.font.render(f"FPS: {self.fps}   L: {length}   M: {move_counter}", True, (255, 255, 255))
+        self.banner_layer.fill(BG_COLOR, pygame.Rect(0, 0, self.height, BANNER_HEIGHT))
+        self.banner_layer.blit(banner, (5, 5))
+        pygame.draw.line(self.banner_layer, LINE_COLOR, (0, BANNER_HEIGHT-1), (self.height, BANNER_HEIGHT-1), 2)
+        self.screen.blit(self.banner_layer, (0, 0))
         pygame.display.update()
 
     def draw_apple(self, apple):
@@ -278,17 +252,18 @@ class GridAnimator():
         height = int(height) + 2*RECT_EXPAND
         pygame.draw.rect(self.snake_layer, BODY_COLOR, (x, y, width, height))
     
-    def draw_path_and_loop(self, head, path):
+    def draw_loop(self):
+            
+        # clear the loop layer
+        pygame.draw.rect(self.loop_layer, (0, 0, 0, 0), self.full_rect) 
+        self.screen.blit(self.loop_layer, (0, 0))
+        self.screen.blit(self.bg_layer, (0, 0))        
+
+        # prevent banner from flashing (not an ideal fix but whatever)
+        self.screen.blit(self.banner_layer, (0, 0))   
+
         # draw planned loop, if exists
-        if hasattr(self.solver, 'loop'):
-            # clear the loop layer
-            pygame.draw.rect(self.loop_layer, (0, 0, 0, 0), self.full_rect) 
-            self.screen.blit(self.loop_layer, (0, 0))
-            self.screen.blit(self.bg_layer, (0, 0))        
-
-            # prevent score from flashing (not an ideal fix but whatever)
-            self.screen.blit(self.score_layer, (0, 0))    
-
+        if self.show_loop and hasattr(self.solver, 'loop'):
             # draw new loop
             loop_points = [self.index_to_centre[c] for c in self.solver.loop]
             pygame.draw.lines(
@@ -298,7 +273,10 @@ class GridAnimator():
                 loop_points,
                 2
             )
-            self.screen.blit(self.loop_layer, (0, 0))
+        self.screen.blit(self.loop_layer, (0, 0))
+
+    def draw_path(self, head, path):
+        
 
         # draw path to apple
         points = [self.index_to_centre[head]] + [self.index_to_centre[p] for p in path]
@@ -322,6 +300,24 @@ class GridAnimator():
                 return None
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    self.fps += 1
+                    if self.fps < 10:
+                        self.fps += 1
+                    else:
+                        self.fps += 10
                 elif event.key == pygame.K_DOWN:
-                    self.fps = max(1, self.fps-1)
+                    if self.fps > 10:
+                        self.fps -= 10
+                    else:
+                        self.fps = max(1, self.fps-1)
+
+                elif event.key == pygame.K_SPACE:
+                    self.paused = not self.paused
+
+                elif event.key == pygame.K_p:
+                    self.show_path = not self.show_path
+
+                elif event.key == pygame.K_f:
+                    self.show_FF_path = not self.show_FF_path
+
+                elif event.key == pygame.K_l:
+                    self.show_loop = not self.show_loop
